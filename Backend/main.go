@@ -45,34 +45,35 @@ func main(){
 		return c.SendString("OK")
 	})
 
-	app.Post("/api/todos", func(c *fiber.Ctx) error{
+	app.Get("/api/todos", func(c *fiber.Ctx) error{
 		var todos []Todo
-
 		if err := db.Find(&todos).Error; err != nil{
-			return fiber.NewError(fiber.StatusInternalServerError, "Failed to fetch todos")
+			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		}	
+		
+		return c.JSON(todos)
+	})
+		
+
+	app.Post("/api/todos", func(c *fiber.Ctx) error{
+		todo := new(Todo)
+		if err := c.BodyParser(todo); err != nil{
+			return fiber.NewError(fiber.StatusBadRequest,err.Error())
 		}
 
-		return c.JSON(todos)
+		if todo.Body == ""{
+			return fiber.NewError(fiber.StatusBadRequest,"Body is required")
+		}
+
+		if err := db.Create(&todo).Error; err != nil{
+			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		}
+
+		return c.Status(fiber.StatusCreated).JSON(todo)
 	})
 
 	app.Patch("/api/todos/:id/done", func(c *fiber.Ctx) error{
-		id, err:= c.ParamsInt("id")
-
-		if err != nil{
-			return c.Status(401).SendString("Invalid ID")
-		}
-
-		for i, t := range todos{
-			if t.ID == id{
-				todos[i].Done = !todos[i].Done
-				break
-			}
-		}
-		return c.JSON(todos)
-	})
-
-	app.Get("/api/todos", func(c *fiber.Ctx) error{
-		return c.JSON(todos)
+		
 	})
 
 	log.Fatal(app.Listen(":4000"))
